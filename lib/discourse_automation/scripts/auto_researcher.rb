@@ -13,13 +13,56 @@ module ::DiscourseAutomation
       v.is_a?(Hash) ? (v["raw"] || v["value"]) : v
     end
 
-    # :"key-value" component shape => [{ "key"=>"k", "value"=>"v" }, ...]
+    # Robustly parse Variables from multiple shapes:
+    # - :"key-value" UI => Array[{ "key"=>"k", "value"=>"v" }, ...]
+    # - JSON object string => {"k":"v", ...}
+    # - JSON array string  => [{"key":"k","value":"v"}, ...]
+    # - Hash with "raw"/"value" string (message/text components)
+    # - nil/empty
     def variables_hash(fields)
-      list = fields.dig("variables", "value") || []
-      list
-        .select { |kv| kv.is_a?(Hash) && kv["key"].present? }
-        .map { |kv| [kv["key"].to_s, (kv["value"] || "").to_s] }
-        .to_h
+      raw = fields.dig("variables", "value")
+
+      case raw
+      when Array
+        # key-value repeater
+        return raw
+          .select { |kv| kv.is_a?(Hash) && kv["key"].present? }
+          .map { |kv| [kv["key"].to_s, (kv["value"] || "").to_s] }
+          .to_h
+      when Hash
+        # Possibly a message component { "raw" => "..." }
+        str = raw["raw"] || raw["value"]
+        return parse_variables_string(str)
+      when String
+        return parse_variables_string(raw)
+      when NilClass
+        return {}
+      else
+        return {}
+      end
+    end
+
+    def parse_variables_string(str)
+      s = (str || "").to_s.strip
+      return {} if s.empty?
+
+      begin
+        parsed = JSON.parse(s)
+      rescue JSON::ParserError
+        return {}
+      end
+
+      case parsed
+      when Hash
+        parsed.transform_keys(&:to_s).transform_values { |v| v.nil? ? "" : v.to_s }
+      when Array
+        parsed
+          .select { |kv| kv.is_a?(Hash) && kv["key"].present? }
+          .map { |kv| [kv["key"].to_s, (kv["value"] || "").to_s] }
+          .to_h
+      else
+        {}
+      end
     end
 
     def parse_json(text)
@@ -105,16 +148,15 @@ module ::DiscourseAutomation
       { "effort" => effort }
     end
 
-    # Parse stop sequences from multi-line message field
+    # Parse stop sequences from multi-line message field (or JSON array)
     def parse_stop_list(fields)
       raw = val(fields, :stop).to_s
-      # If JSON array is pasted, honor it
       if raw.strip.start_with?("[")
         begin
           arr = JSON.parse(raw)
           return Array(arr).map(&:to_s).map(&:strip).reject(&:empty?)
         rescue JSON::ParserError
-          # fall back to line split
+          # fall through
         end
       end
       raw.split(/\r?\n/).map(&:strip).reject(&:empty?)
@@ -143,12 +185,13 @@ DiscourseAutomation::Scriptable.add(
   field :prompt, component: :message, required: true
   field :system_prompt, component: :message
 
-  # Key/Value repeater UI (note the hyphen)
+  # Key/Value repeater UI (with hyphen). If your build lacks this component,
+  # the back-end now also accepts JSON via string.
   field :variables, component: :"key-value"
 
   field :model, component: :text, required: true
 
-  # Use :text for numerics on older builds; parsed in Ruby
+  # Use :text for numerics (some builds don't have :number)
   field :poll_timing, component: :text
   field :send_pm_with_full_response, component: :user
   field :category, component: :category, required: true
