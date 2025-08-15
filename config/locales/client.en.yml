@@ -13,11 +13,11 @@ en:
 
             variables:
               label: "Variables (optional)"
-              description: "Key/value variables available to your prompt as {{variable}}. Add as many as you need."
+              description: "Add key/value rows; reference them in prompts with {{your_key}}. Built-ins: {{now_iso}}, {{today}}, {{week_start_iso}}, {{week_end_iso}}."
 
             prompt:
               label: "Prompt (required)"
-              description: "Full user prompt sent to the model. Variables like {{range}} are substituted."
+              description: "Full user prompt sent to the model. Variables like {{country}} are substituted."
 
             system_prompt:
               label: "System prompt (optional)"
@@ -25,77 +25,72 @@ en:
 
             model:
               label: "Model (required)"
-              description: "OpenAI model name for the Responses API (e.g., gpt-4o, gpt-4o-mini, o3, gpt-4.1)."
+              description: "OpenAI model name for the Responses API (ideally gpt-5-2025-08-07)."
 
             poll_timing:
-              label: "Poll timing (optional)"
-              description: "Seconds between status checks if the API returns an in-progress response. Default 2s."
+              label: "Poll timing (seconds, optional)"
+              description: "If the response is in-progress, check status every N seconds (default 2s)."
 
             send_pm_with_full_response:
               label: "Send PM with full response (optional)"
-              description: "Send the raw JSON API response to this user as a private message."
+              description: "Send the *raw JSON* API response to this user."
 
             category:
               label: "Category to post in (required)"
-              description: "Category where the new topic will be created."
+              description: "Where to create the new topic."
 
             stop:
               label: "stop (optional)"
-              description: "Stop sequences. Add one or more entries."
+              description: "Stop sequences. Add one or more lines."
 
             temperature:
               label: "temperature (optional)"
-              description: "Sampling temperature (0–2). If unset, model default applies."
+              description: "0–2. Higher is more random."
 
             top_p:
               label: "top_p (optional)"
-              description: "Nucleus sampling probability (0–1). If unset, model default applies."
+              description: "0–1. Use either temperature or top_p."
 
             presence_penalty:
               label: "presence_penalty (optional)"
-              description: "Penalize new tokens based on whether they appear in the text so far (–2..2)."
+              description: "–2..2."
 
             frequency_penalty:
               label: "frequency_penalty (optional)"
-              description: "Penalize new tokens based on their frequency so far (–2..2)."
+              description: "–2..2."
 
             seed:
               label: "seed (optional)"
-              description: "If supported, fixed seed to improve reproducibility."
-
-            include_sources:
-              label: "Include sources in output"
-              description: "Hints the model to include citations when using web search."
-
-            enable_web_search:
-              label: "Enable web search tool"
-              description: "Adds OpenAI’s built-in web search tool to the request."
-
-            web_search_depth:
-              label: "Web search depth"
-              description: "Context size used by the web search tool."
-              choices:
-                low: "low"
-                medium: "medium"
-                high: "high"
+              description: "If supported, fixes random seed."
 
             reasoning_effort:
               label: "reasoning.effort (optional)"
-              description: "For reasoning models (o-series / GPT-5): low/medium/high."
+              description: "For reasoning models: low/medium/high."
               choices:
                 low: "low"
                 medium: "medium"
                 high: "high"
+
+            enable_web_search:
+              label: "Enable web search tool"
+              description: "Use OpenAI’s built-in web search tool."
+
+            web_search_depth:
+              label: "Web search depth"
+              description: "Context size for web search."
+              choices:
+                low: "low"
+                medium: "medium"
+                high: "high"
+
+            include_sources:
+              label: "Include sources in output"
+              description: "Ask the model to include citations when it used web search."
 
             responses_api_overrides:
               label: "Advanced: Overrides JSON (optional)"
               description: >
-                Raw JSON to merge into the final request body. Use this for any
-                Responses API parameter that isn’t explicitly exposed here
-                (e.g., tool_choice, response_format, metadata, max_output_tokens,
-                logprobs, parallel_tool_calls, etc.). Be sure it matches model capabilities.
-
-            title_prompt_hint:
-              label: "—"
-              description: "The script will call the model again to generate a concise topic title from the body."
-
+                Raw JSON merged into the final POST /v1/responses payload (after the basic fields).
+                Use it for any Responses API parameter not exposed here, e.g.:
+                response_format, metadata, tool_choice, max_output_tokens, logprobs, parallel_tool_calls,
+                structured outputs schemas, previous_response_id, etc. Ensure they match your model’s capabilities.
