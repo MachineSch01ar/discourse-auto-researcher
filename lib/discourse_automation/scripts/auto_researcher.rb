@@ -21,16 +21,16 @@ DiscourseAutomation::Scriptable.add(
   # ---------- Fields ----------
   field :creator, component: :user, required: true
 
-  # Multi-line editor for prompts
+  # multi-line editors
   field :prompt, component: :message, required: true
   field :system_prompt, component: :message
 
-  # VARIABLES: key/value UI (not JSON)
-  field :variables, component: :key_value
+  # ✅ key/value repeater UI (IMPORTANT: this component name uses a hyphen)
+  field :variables, component: :"key-value"
 
   field :model, component: :text, required: true
 
-  # NOTE: use :text for numbers (some builds don’t support :number)
+  # some Discourse builds don’t support :number — use :text and parse
   field :poll_timing, component: :text
   field :send_pm_with_full_response, component: :user
   field :category, component: :category, required: true
@@ -64,7 +64,7 @@ DiscourseAutomation::Scriptable.add(
         }
   field :include_sources, component: :boolean
 
-  # Advanced free-form JSON
+  # free-form JSON merged into POST /v1/responses
   field :responses_api_overrides, component: :message
 
   # ---------- Helpers ----------
@@ -73,6 +73,8 @@ DiscourseAutomation::Scriptable.add(
     v.is_a?(Hash) ? (v["raw"] || v["value"]) : v
   end
 
+  # Matches Automations :"key-value" component:
+  # fields["variables"]["value"] => [{ "key"=>"country", "value"=>"Canada" }, ...]
   def self.variables_hash(fields)
     list = fields.dig("variables", "value") || []
     list
