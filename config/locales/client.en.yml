@@ -1,0 +1,71 @@
+en:
+  js:
+    discourse_automation:
+      scriptables:
+        auto_researcher:
+          title: "Auto Researcher"
+          description: "Calls OpenAI’s Responses API with your custom prompt/variables, then posts the result as a topic."
+          fields:
+            creator:
+              label: "Creator (required)"
+              description: "User account to author the new topic."
+            variables:
+              label: "Variables (optional)"
+              description: "Key/value JSON used to substitute {{variable}} placeholders in prompts. Built-ins: {{now_iso}}, {{today}}, {{week_start_iso}}, {{week_end_iso}}."
+            prompt:
+              label: "Prompt (required)"
+              description: "The full user prompt sent to the model. You can reference variables like {{topic_range}}."
+            model:
+              label: "Model (required)"
+              description: "OpenAI model name for the Responses API (e.g., gpt-4o, o4-mini, o3, gpt-5-mini)."
+            system_prompt:
+              label: "System prompt (optional)"
+              description: "Optional system/developer instruction message."
+            poll_timing_seconds:
+              label: "Poll timing (seconds, optional)"
+              description: "If set, the script will poll GET /v1/responses/{id} every N seconds until status is 'completed'."
+            send_pm_user:
+              label: "Send PM with full response (optional)"
+              description: "User to receive the *raw JSON* API response as a private message."
+            category:
+              label: "Category to post in (required)"
+              description: "Category where the new topic will be created."
+            temperature:
+              label: "temperature (optional)"
+              description: "0–2. Higher is more random. Not all models support the full range."
+            top_p:
+              label: "top_p (optional)"
+              description: "0–1 nucleus sampling. Use either temperature or top_p."
+            max_output_tokens:
+              label: "max_output_tokens (optional)"
+              description: "Hard cap on generated tokens."
+            presence_penalty:
+              label: "presence_penalty (optional)"
+              description: "Penalize new-topic token presence."
+            frequency_penalty:
+              label: "frequency_penalty (optional)"
+              description: "Penalize repeating tokens."
+            seed:
+              label: "seed (optional)"
+              description: "Set for deterministic runs (where supported)."
+            stop:
+              label: "stop (optional)"
+              description: "Stop sequence(s). Use a string; multiple can be passed via overrides JSON."
+            reasoning_effort:
+              label: "reasoning.effort (optional)"
+              description: "For O-series/reasoning models: low/medium/high."
+            web_search_enabled:
+              label: "Enable web search tool"
+              description: "Adds the built-in web search tool to the Responses API call."
+            web_search_depth:
+              label: "Web search depth"
+              description: "quick or deep. Only used if web search is enabled."
+            web_search_results:
+              label: "Web search results (count)"
+              description: "Max number of web results to use."
+            web_search_include_sources:
+              label: "Include sources in output"
+              description: "Ask the model/tooling to include citations when supported."
+            responses_api_overrides:
+              label: "Responses API overrides (JSON)"
+              description: "Advanced: merge ANY Responses API parameters here (e.g., tools, tool_choice, metadata, previous_response_id, text.format, etc.). Use with care. See OpenAI docs."
