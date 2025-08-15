@@ -21,21 +21,23 @@ DiscourseAutomation::Scriptable.add(
   # ---------- Fields ----------
   field :creator, component: :user, required: true
 
-  # multi-line editors
+  # Multi-line editors for prompts
   field :prompt, component: :message, required: true
   field :system_prompt, component: :message
 
-  # ✅ key/value repeater UI (IMPORTANT: this component name uses a hyphen)
+  # Key/Value repeater UI (note the hyphen)
   field :variables, component: :"key-value"
 
   field :model, component: :text, required: true
 
-  # some Discourse builds don’t support :number — use :text and parse
+  # Use :text for numerics on older builds; parsed in Ruby
   field :poll_timing, component: :text
   field :send_pm_with_full_response, component: :user
   field :category, component: :category, required: true
 
-  field :stop, component: :list
+  # STOP: use multi-line message instead of unsupported :list
+  field :stop, component: :message
+
   field :temperature, component: :text
   field :top_p, component: :text
   field :presence_penalty, component: :text
@@ -64,7 +66,7 @@ DiscourseAutomation::Scriptable.add(
         }
   field :include_sources, component: :boolean
 
-  # free-form JSON merged into POST /v1/responses
+  # Free-form JSON merged into POST /v1/responses
   field :responses_api_overrides, component: :message
 
   # ---------- Helpers ----------
@@ -73,8 +75,7 @@ DiscourseAutomation::Scriptable.add(
     v.is_a?(Hash) ? (v["raw"] || v["value"]) : v
   end
 
-  # Matches Automations :"key-value" component:
-  # fields["variables"]["value"] => [{ "key"=>"country", "value"=>"Canada" }, ...]
+  # :"key-value" component shape => [{ "key"=>"k", "value"=>"v" }, ...]
   def self.variables_hash(fields)
     list = fields.dig("variables", "value") || []
     list
@@ -166,6 +167,21 @@ DiscourseAutomation::Scriptable.add(
     { "effort" => effort }
   end
 
+  # Parse stop sequences from multi-line message field
+  def self.parse_stop_list(fields)
+    raw = val(fields, :stop).to_s
+    # If someone pastes JSON array, honor it
+    if raw.strip.start_with?("[")
+      begin
+        arr = JSON.parse(raw)
+        return Array(arr).map(&:to_s).map(&:strip).reject(&:empty?)
+      rescue JSON::ParserError
+        # fall back to line split
+      end
+    end
+    raw.split(/\r?\n/).map(&:strip).reject(&:empty?)
+  end
+
   # ---------- Execute ----------
   script do |_ctx, fields, _automation|
     creator_username = self.class.val(fields, :creator).to_s
@@ -182,7 +198,7 @@ DiscourseAutomation::Scriptable.add(
 
     poll_every  = (self.class.num(self.class.val(fields, :poll_timing)) || 2).to_i.clamp(1, 30)
 
-    stop_list   = fields.dig("stop", "value") || []
+    stop_list   = self.class.parse_stop_list(fields)
     temp        = self.class.num(self.class.val(fields, :temperature))
     top_p       = self.class.num(self.class.val(fields, :top_p))
     presence    = self.class.num(self.class.val(fields, :presence_penalty))
