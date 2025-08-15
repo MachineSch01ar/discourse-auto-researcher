@@ -13,24 +13,22 @@ module ::DiscourseAutomation
       v.is_a?(Hash) ? (v["raw"] || v["value"]) : v
     end
 
-    # Robustly parse Variables from multiple shapes:
+    # Robust Variables parsing:
     # - :"key-value" UI => Array[{ "key"=>"k", "value"=>"v" }, ...]
     # - JSON object string => {"k":"v", ...}
     # - JSON array string  => [{"key":"k","value":"v"}, ...]
-    # - Hash with "raw"/"value" string (message/text components)
+    # - Hash with "raw"/"value" => string
     # - nil/empty
     def variables_hash(fields)
       raw = fields.dig("variables", "value")
 
       case raw
       when Array
-        # key-value repeater
         return raw
           .select { |kv| kv.is_a?(Hash) && kv["key"].present? }
           .map { |kv| [kv["key"].to_s, (kv["value"] || "").to_s] }
           .to_h
       when Hash
-        # Possibly a message component { "raw" => "..." }
         str = raw["raw"] || raw["value"]
         return parse_variables_string(str)
       when String
@@ -92,36 +90,41 @@ module ::DiscourseAutomation
       }
     end
 
-    def api_headers
+    # --- HTTP helpers -------------------------------------------------------
+
+    # Base headers: do NOT send org/project by default (prevents 401 mismatch)
+    def api_headers(extra_headers = nil)
       h = {
         "Authorization" => "Bearer #{SiteSetting.ai_openai_api_key}",
         "Content-Type"  => "application/json"
       }
-      if SiteSetting.respond_to?(:ai_openai_organization) && SiteSetting.ai_openai_organization.present?
-        h["OpenAI-Organization"] = SiteSetting.ai_openai_organization
-      end
-      if SiteSetting.respond_to?(:ai_openai_project) && SiteSetting.ai_openai_project.present?
-        h["OpenAI-Project"] = SiteSetting.ai_openai_project
+      if extra_headers.is_a?(Hash)
+        extra_headers.each do |k, v|
+          next if k.nil? || v.nil?
+          h[k.to_s] = v.to_s
+        end
       end
       h
     end
 
-    def http_post(url, payload)
+    def http_post(url, payload, extra_headers = nil)
       uri = URI(url)
       http = Net::HTTP.new(uri.host, uri.port); http.use_ssl = true
-      req = Net::HTTP::Post.new(uri.request_uri, api_headers)
+      req = Net::HTTP::Post.new(uri.request_uri, api_headers(extra_headers))
       req.body = JSON.generate(payload)
       res = http.request(req)
       [res.code.to_i, (JSON.parse(res.body) rescue { "raw" => res.body })]
     end
 
-    def http_get(url)
+    def http_get(url, extra_headers = nil)
       uri = URI(url)
       http = Net::HTTP.new(uri.host, uri.port); http.use_ssl = true
-      req = Net::HTTP::Get.new(uri.request_uri, api_headers)
+      req = Net::HTTP::Get.new(uri.request_uri, api_headers(extra_headers))
       res = http.request(req)
       [res.code.to_i, (JSON.parse(res.body) rescue { "raw" => res.body })]
     end
+
+    # -----------------------------------------------------------------------
 
     def extract_text(resp)
       return resp["output_text"] if resp["output_text"].present?
@@ -186,7 +189,7 @@ DiscourseAutomation::Scriptable.add(
   field :system_prompt, component: :message
 
   # Key/Value repeater UI (with hyphen). If your build lacks this component,
-  # the back-end now also accepts JSON via string.
+  # the back-end also accepts JSON via string.
   field :variables, component: :"key-value"
 
   field :model, component: :text, required: true
@@ -228,6 +231,7 @@ DiscourseAutomation::Scriptable.add(
   field :include_sources, component: :boolean
 
   # Free-form JSON merged into POST /v1/responses
+  # Optional: support a special key "__headers__" to add HTTP headers.
   field :responses_api_overrides, component: :message
 
   # ---------- Execute ----------
@@ -262,6 +266,13 @@ DiscourseAutomation::Scriptable.add(
 
     overrides = H.parse_json(H.val(fields, :responses_api_overrides).to_s)
 
+    # Pull out optional header overrides and DELETE them from body
+    header_overrides = {}
+    if overrides.is_a?(Hash) && overrides.key?("__headers__")
+      ho = overrides.delete("__headers__")
+      header_overrides = ho if ho.is_a?(Hash)
+    end
+
     # Build payload
     user_text = user_prompt.dup
     if include_sources
@@ -286,12 +297,12 @@ DiscourseAutomation::Scriptable.add(
     payload = payload.deep_merge(overrides) if overrides.present?
 
     url = "https://api.openai.com/v1/responses"
-    code, resp = H.http_post(url, payload)
+    code, resp = H.http_post(url, payload, header_overrides)
     raise Discourse::InvalidParameters, "OpenAI error #{code}: #{resp}" if code >= 400
 
     while resp["status"] == "in_progress" && resp["id"].present?
       sleep(poll_every)
-      _c, resp = H.http_get("#{url}/#{resp['id']}")
+      _c, resp = H.http_get("#{url}/#{resp['id']}", header_overrides)
     end
 
     # Optional PM of raw JSON
@@ -321,7 +332,7 @@ DiscourseAutomation::Scriptable.add(
     title_payload["tools"] = tool_list if tool_list.any?
     title_payload = title_payload.deep_merge(overrides) if overrides.present?
 
-    code2, resp2 = H.http_post(url, title_payload)
+    code2, resp2 = H.http_post(url, title_payload, header_overrides)
     raise Discourse::InvalidParameters, "OpenAI title error #{code2}: #{resp2}" if code2 >= 400
     title = H.extract_text(resp2).to_s.strip
     title = title[0...300] if title.length > 300
