@@ -5,64 +5,49 @@ en:
         auto_researcher:
           title: "Auto Researcher"
           description: "A general LLM posting automation using the OpenAI Responses API."
-
           fields:
             creator:
               label: "Creator (required)"
               description: "User account to author the new topic."
-
             variables:
               label: "Variables (optional)"
               description: "Add key/value rows; reference them in prompts with {{your_key}}. Built-ins: {{now_iso}}, {{today}}, {{week_start_iso}}, {{week_end_iso}}."
-
             prompt:
               label: "Prompt (required)"
               description: "Full user prompt sent to the model. Variables like {{country}} are substituted."
-
             system_prompt:
               label: "System prompt (optional)"
               description: "Optional system/developer instruction sent before the user prompt."
-
             model:
               label: "Model (required)"
               description: "OpenAI model name for the Responses API (ideally gpt-5-2025-08-07)."
-
             poll_timing:
               label: "Poll timing (seconds, optional)"
               description: "If the response is in-progress, check status every N seconds (default 2s)."
-
             send_pm_with_full_response:
               label: "Send PM with full response (optional)"
               description: "Send the *raw JSON* API response to this user."
-
             category:
               label: "Category to post in (required)"
               description: "Where to create the new topic."
-
             stop:
               label: "stop (optional)"
               description: "Stop sequences. Add one or more lines."
-
             temperature:
               label: "temperature (optional)"
               description: "0–2. Higher is more random."
-
             top_p:
               label: "top_p (optional)"
               description: "0–1. Use either temperature or top_p."
-
             presence_penalty:
               label: "presence_penalty (optional)"
               description: "–2..2."
-
             frequency_penalty:
               label: "frequency_penalty (optional)"
               description: "–2..2."
-
             seed:
               label: "seed (optional)"
               description: "If supported, fixes random seed."
-
             reasoning_effort:
               label: "reasoning.effort (optional)"
               description: "For reasoning models: low/medium/high."
@@ -70,11 +55,9 @@ en:
                 low: "low"
                 medium: "medium"
                 high: "high"
-
             enable_web_search:
               label: "Enable web search tool"
               description: "Use OpenAI’s built-in web search tool."
-
             web_search_depth:
               label: "Web search depth"
               description: "Context size for web search."
@@ -82,11 +65,9 @@ en:
                 low: "low"
                 medium: "medium"
                 high: "high"
-
             include_sources:
               label: "Include sources in output"
               description: "Ask the model to include citations when it used web search."
-
             responses_api_overrides:
               label: "Advanced: Overrides JSON (optional)"
               description: >
