@@ -1,0 +1,4 @@
+plugins:
+  auto_researcher_enabled:
+    default: true
+    client: true
