@@ -18,26 +18,29 @@ DiscourseAutomation::Scriptable.add(
   version 1
   triggerables [:recurring]
 
-  # --- Fields ---
+  # ---------- Fields ----------
   field :creator, component: :user, required: true
 
-  # Multi-line editor for prompts (composer-like)
+  # Multi-line editor for prompts
   field :prompt, component: :message, required: true
   field :system_prompt, component: :message
 
-  field :variables, component: :text # JSON input; safest across versions
+  # VARIABLES: key/value UI (not JSON)
+  field :variables, component: :key_value
+
   field :model, component: :text, required: true
 
-  field :poll_timing, component: :number
+  # NOTE: use :text for numbers (some builds don’t support :number)
+  field :poll_timing, component: :text
   field :send_pm_with_full_response, component: :user
   field :category, component: :category, required: true
 
   field :stop, component: :list
-  field :temperature, component: :number
-  field :top_p, component: :number
-  field :presence_penalty, component: :number
-  field :frequency_penalty, component: :number
-  field :seed, component: :number
+  field :temperature, component: :text
+  field :top_p, component: :text
+  field :presence_penalty, component: :text
+  field :frequency_penalty, component: :text
+  field :seed, component: :text
 
   field :reasoning_effort,
         component: :choices,
@@ -61,12 +64,21 @@ DiscourseAutomation::Scriptable.add(
         }
   field :include_sources, component: :boolean
 
-  field :responses_api_overrides, component: :message # multi-line JSON
+  # Advanced free-form JSON
+  field :responses_api_overrides, component: :message
 
-  # --- Helpers ---
+  # ---------- Helpers ----------
   def self.val(fields, key)
     v = fields.dig(key.to_s, "value")
     v.is_a?(Hash) ? (v["raw"] || v["value"]) : v
+  end
+
+  def self.variables_hash(fields)
+    list = fields.dig("variables", "value") || []
+    list
+      .select { |kv| kv.is_a?(Hash) && kv["key"].present? }
+      .map { |kv| [kv["key"].to_s, (kv["value"] || "").to_s] }
+      .to_h
   end
 
   def self.parse_json(text)
@@ -152,7 +164,7 @@ DiscourseAutomation::Scriptable.add(
     { "effort" => effort }
   end
 
-  # --- Execute ---
+  # ---------- Execute ----------
   script do |_ctx, fields, _automation|
     creator_username = self.class.val(fields, :creator).to_s
     creator = User.find_by_username!(creator_username)
@@ -160,7 +172,7 @@ DiscourseAutomation::Scriptable.add(
     category_id = fields.dig("category", "value").to_i
     model       = self.class.val(fields, :model).to_s
 
-    user_vars   = self.class.parse_json(self.class.val(fields, :variables).to_s)
+    user_vars   = self.class.variables_hash(fields)
     vars        = self.class.time_vars.merge(user_vars)
 
     user_prompt = self.class.subst(self.class.val(fields, :prompt), vars)
