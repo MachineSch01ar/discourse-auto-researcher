@@ -1,8 +1,9 @@
 en:
   site_settings:
     auto_researcher_enabled: "Enable the Auto Researcher plugin"
+
   discourse_automation:
     scriptables:
       auto_researcher:
         title: "Auto Researcher"
-        description: "Calls the OpenAI Responses API with your prompt/parameters, generates a title, and posts a new topic in a chosen category."
+        description: "Calls the OpenAI Responses API with your prompt/parameters, then posts a topic with an AI-generated title."
